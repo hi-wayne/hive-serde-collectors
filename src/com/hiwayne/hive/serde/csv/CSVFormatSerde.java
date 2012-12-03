@@ -14,14 +14,8 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Properties;
-
-import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hive.serde.Constants;
-import org.apache.hadoop.hive.serde2.SerDe;
-import org.apache.hadoop.hive.serde2.SerDeException;
-import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
+import java.util.List; 
+import org.apache.hadoop.hive.serde.Constants; 
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
 import org.apache.hadoop.hive.serde2.objectinspector.StructField;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
@@ -30,11 +24,9 @@ import org.apache.hadoop.hive.serde2.objectinspector.primitive.StringObjectInspe
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoUtils;
 import org.apache.hadoop.io.Text;
-import org.apache.hadoop.io.Writable;
 
 import au.com.bytecode.opencsv.CSVReader;
 import au.com.bytecode.opencsv.CSVWriter;
-
 
 public class CSVFormatSerde implements SerDe {
 	private ObjectInspector inspector;
@@ -42,22 +34,22 @@ public class CSVFormatSerde implements SerDe {
 	private int numCols;
 	private List<String> row;
 
-	private char separatorChar;
-	private char quoteChar;
-	private char escapeChar;
+	private char separatorChar = CSVWriter.DEFAULT_SEPARATOR;
+	private char quoteChar = CSVWriter.DEFAULT_QUOTE_CHARACTER;
+	private char escapeChar = CSVWriter.DEFAULT_ESCAPE_CHARACTER;
 
 	@Override
 	public void initialize(final Configuration conf, final Properties tbl)
 			throws SerDeException {
-		final List<String> columnNames = Arrays.asList(tbl.getProperty(
+		List<String> columnNames = Arrays.asList(tbl.getProperty(
 				Constants.LIST_COLUMNS).split(","));
-		final List<TypeInfo> columnTypes = TypeInfoUtils
+		List<TypeInfo> columnTypes = TypeInfoUtils
 				.getTypeInfosFromTypeString(tbl
 						.getProperty(Constants.LIST_COLUMN_TYPES));
 
 		numCols = columnNames.size();
 
-		final List<ObjectInspector> columnOIs = new ArrayList<ObjectInspector>(
+		List<ObjectInspector> columnOIs = new ArrayList<ObjectInspector>(
 				numCols);
 
 		for (int i = 0; i < numCols; i++) {
@@ -82,14 +74,22 @@ public class CSVFormatSerde implements SerDe {
 				CSVWriter.DEFAULT_ESCAPE_CHARACTER);
 	}
 
+	@Override
+	public Class<? extends Writable> getSerializedClass() {
+		return Text.class;
+	}
+
+	@Override
+	public ObjectInspector getObjectInspector() throws SerDeException {
+		return inspector;
+	}
+
 	private final char getProperty(final Properties tbl, final String property,
 			final char def) {
 		final String val = tbl.getProperty(property);
-
 		if (val != null) {
 			return val.charAt(0);
 		}
-
 		return def;
 	}
 
@@ -172,10 +172,6 @@ public class CSVFormatSerde implements SerDe {
 
 	private CSVReader newReader(final Reader reader, char separator,
 			char quote, char escape) {
-		// CSVReader will throw an exception if any of separator, quote, or
-		// escape is the same, but
-		// the CSV format specifies that the escape character and quote char are
-		// the same... very weird
 		if (CSVWriter.DEFAULT_ESCAPE_CHARACTER == escape) {
 			return new CSVReader(reader, separator, quote);
 		} else {
@@ -190,16 +186,6 @@ public class CSVFormatSerde implements SerDe {
 		} else {
 			return new CSVWriter(writer, separator, quote, escape, "");
 		}
-	}
-
-	@Override
-	public ObjectInspector getObjectInspector() throws SerDeException {
-		return inspector;
-	}
-
-	@Override
-	public Class<? extends Writable> getSerializedClass() {
-		return Text.class;
 	}
 
 }
